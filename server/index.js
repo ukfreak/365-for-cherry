@@ -258,9 +258,8 @@ if (fs.existsSync(distPath)) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`===============================================`);
-  console.log(`✨ 365 Reasons Web Push Server running on port ${PORT}`);
-  console.log(`📡 VAPID Public Key: ${vapidKeys.publicKey}`);
-  console.log(`===============================================`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('===============================================');
+  console.log(`✨ 365 Reasons Server running on 0.0.0.0:${PORT}`);
+  console.log('===============================================');
 });
