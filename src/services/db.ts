@@ -74,6 +74,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 // ----------------- REASONS API -----------------
 export async function getAllReasons(): Promise<Reason[]> {
   const db = await getDB();
+  await syncReasonsWithDefaults();
   const stored = await db.getAll('reasons');
 
   if (!stored || stored.length === 0) {
@@ -107,7 +108,9 @@ export async function getReasonByDay(day: number): Promise<Reason | undefined> {
 
 export async function updateReason(reason: Reason): Promise<void> {
   const db = await getDB();
-  await db.put('reasons', reason);
+  const def = DEFAULT_REASONS.find((r) => r.day === reason.day);
+  const edited = !!def && reason.text !== def.text;
+  await db.put('reasons', { ...reason, edited });
 }
 
 export async function toggleFavoriteReason(day: number): Promise<boolean> {
