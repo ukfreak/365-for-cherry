@@ -17,6 +17,7 @@ export interface Reason {
   isFavorite?: boolean;
   revealedAt?: string | null;
   customNote?: string;
+  edited?: boolean;
 }
 
 export interface Memory {
