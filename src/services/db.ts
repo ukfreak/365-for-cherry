@@ -71,6 +71,28 @@ export const DEFAULT_SETTINGS: AppSettings = {
   serverUrl: 'http://localhost:3001',
 };
 
+const REASONS_VERSION_KEY = 'reasonsVersion';
+
+async function syncReasonsWithDefaults(): Promise<void> {
+  const db = await getDB();
+  const storedVersion = await db.get('settings', REASONS_VERSION_KEY);
+  if (storedVersion === DEFAULT_REASONS_VERSION) return;
+
+  const existing = new Map((await db.getAll('reasons')).map((r) => [r.day, r]));
+  const tx = db.transaction(['reasons', 'settings'], 'readwrite');
+  for (const def of DEFAULT_REASONS) {
+    const old = existing.get(def.day);
+    if (old?.edited) continue;
+    const merged: Reason = { ...def };
+    if (old?.isFavorite) merged.isFavorite = true;
+    if (old?.revealedAt) merged.revealedAt = old.revealedAt;
+    if (old?.customNote) merged.customNote = old.customNote;
+    await tx.objectStore('reasons').put(merged);
+  }
+  await tx.objectStore('settings').put(DEFAULT_REASONS_VERSION, REASONS_VERSION_KEY);
+  await tx.done;
+}
+
 // ----------------- REASONS API -----------------
 export async function getAllReasons(): Promise<Reason[]> {
   const db = await getDB();
