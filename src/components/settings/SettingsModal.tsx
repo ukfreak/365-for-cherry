@@ -305,25 +305,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </p>
               </div>
 
-              {/* Reasons Customizer Button */}
-              <div className="p-4 bg-romantic-cream/80 rounded-2xl border border-romantic-pastel flex items-center justify-between">
-                <div>
-                  <h4 className="font-serif text-sm font-bold text-romantic-brown">
-                    Personalize 365 Reasons
-                  </h4>
-                  <p className="text-[11px] text-romantic-brown/70">
-                    Edit or rewrite any of the 365 daily reasons.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsEditorOpen(true)}
-                  className="px-3.5 py-1.5 rounded-full bg-romantic-rose text-white text-xs font-semibold hover:bg-romantic-deepRose shadow-sm whitespace-nowrap"
-                >
-                  Edit Reasons ✍️
-                </button>
-              </div>
-
               {/* Girlfriend Preparation / Preview Mode Toggle */}
               <div className="p-4 bg-romantic-pastel/30 rounded-2xl border border-romantic-blush/40 space-y-3">
                 <div className="flex items-center justify-between">
