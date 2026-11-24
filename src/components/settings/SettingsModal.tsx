@@ -305,44 +305,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </p>
               </div>
 
-              {/* Girlfriend Preparation / Preview Mode Toggle */}
-              <div className="p-4 bg-romantic-pastel/30 rounded-2xl border border-romantic-blush/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Eye className="w-4 h-4 text-romantic-deepRose" />
-                    <div>
-                      <h4 className="text-xs font-bold text-romantic-brown">
-                        Preview / God Mode (For Girlfriend)
-                      </h4>
-                      <p className="text-[10px] text-romantic-brown/60">
-                        Unlock all days to review content & test Day 365
-                      </p>
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={previewMode}
-                    onChange={(e) => setPreviewMode(e.target.checked)}
-                    className="w-4 h-4 accent-romantic-rose rounded"
-                  />
-                </div>
-
-                {previewMode && (
-                  <div className="pt-2 border-t border-romantic-blush/30 flex items-center justify-between">
-                    <span className="text-xs text-romantic-brown font-medium">
-                      Simulate Day (1-365):
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={365}
-                      value={previewDayOverride}
-                      onChange={(e) => setPreviewDayOverride(Number(e.target.value))}
-                      className="w-20 px-2 py-1 text-xs rounded-xl border border-romantic-pastel text-center font-bold"
-                    />
-                  </div>
-                )}
-              </div>
+              
 
               <div className="pt-2 flex justify-end">
                 <button
