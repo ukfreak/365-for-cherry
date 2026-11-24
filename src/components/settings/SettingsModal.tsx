@@ -24,7 +24,10 @@ import {
   unsubscribeFromPushNotifications,
   sendTestNotification,
 } from '../../services/notifications';
-import { ReasonEditorModal } from './ReasonEditorModal';
+const BOSS_PASSWORD = 'cherry6*';
+const DEFAULT_RECIPIENT_NAME = 'Cherry';
+const DEFAULT_SENDER_NAME = 'Yash';
+const DEFAULT_JOURNEY_START_DATE = '2026-11-29';
 
 interface SettingsModalProps {
   settings: AppSettings;
@@ -46,8 +49,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onSaveSettings,
   reasons,
-  onUpdateReason,
-  onResetAllReasons,
   currentDay,
   onClose,
   canInstallPWA,
@@ -58,12 +59,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClearMemories,
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'pwa' | 'privacy'>('general');
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  // Settings access gate. This is a client-side convenience lock, not
+  // production-grade authentication (see the note below the code).
+  const [accessMode, setAccessMode] = useState<'identity' | 'password' | 'readonly' | 'admin'>('identity');
+  const [bossPassword, setBossPassword] = useState('');
+  const [accessError, setAccessError] = useState('');
 
   // Form State
-  const [recipientName, setRecipientName] = useState(settings.recipientName);
-  const [senderName, setSenderName] = useState(settings.senderName);
-  const [journeyStartDate, setJourneyStartDate] = useState(settings.journeyStartDate);
+  const [recipientName, setRecipientName] = useState(
+    settings.recipientName || DEFAULT_RECIPIENT_NAME
+  );
+  const [senderName, setSenderName] = useState(
+    settings.senderName || DEFAULT_SENDER_NAME
+  );
+  const [journeyStartDate, setJourneyStartDate] = useState(
+    settings.journeyStartDate || DEFAULT_JOURNEY_START_DATE
+  );
   const [notificationTime, setNotificationTime] = useState(settings.notificationTime);
   const [notificationsEnabled, setNotificationsEnabled] = useState(settings.notificationsEnabled);
   const [previewMode, setPreviewMode] = useState(settings.previewMode);
@@ -157,6 +168,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setTimeout(() => setNotifMessage(''), 2500);
   };
 
+  const enterReadOnlyMode = () => {
+    setAccessMode('readonly');
+    setAccessError('');
+    setBossPassword('');
+    setRecipientName(DEFAULT_RECIPIENT_NAME);
+    setSenderName(DEFAULT_SENDER_NAME);
+    setJourneyStartDate(DEFAULT_JOURNEY_START_DATE);
+
+    // Keep the public/default version of the gift fixed for everyone else.
+    onSaveSettings({
+      recipientName: DEFAULT_RECIPIENT_NAME,
+      senderName: DEFAULT_SENDER_NAME,
+      journeyStartDate: DEFAULT_JOURNEY_START_DATE,
+    });
+  };
+
+  const handleBossPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (bossPassword === BOSS_PASSWORD) {
+      setAccessMode('admin');
+      setAccessError('');
+      setBossPassword('');
+      setNotifError('');
+      return;
+    }
+
+    setNotifError('Incorrect password. You have read-only access.');
+    enterReadOnlyMode();
+  };
+
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -175,6 +217,86 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  if (accessMode === 'identity' || accessMode === 'password') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+        <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-romantic-pastel">
+          <div className="text-center space-y-3">
+            <Heart className="w-8 h-8 mx-auto text-romantic-rose fill-romantic-rose" />
+            <h3 className="font-serif text-xl font-bold text-romantic-brown">
+              Just one tiny question...
+            </h3>
+            {accessMode === 'identity' ? (
+              <>
+                <p className="text-sm text-romantic-brown/80">
+                  Are you Yasasri, the great?
+                </p>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccessMode('password');
+                      setAccessError('');
+                    }}
+                    className="py-2.5 rounded-full bg-romantic-rose text-white text-sm font-semibold hover:bg-romantic-deepRose"
+                  >
+                    Yes, that's me
+                  </button>
+                  <button
+                    type="button"
+                    onClick={enterReadOnlyMode}
+                    className="py-2.5 rounded-full bg-romantic-softBg text-romantic-brown text-sm font-semibold border border-romantic-pastel"
+                  >
+                    Nope
+                  </button>
+                </div>
+              </>
+            ) : (
+              <form onSubmit={handleBossPasswordSubmit} className="space-y-3 text-left">
+                <p className="text-sm text-romantic-brown/80 text-center">
+                  Prove it, Boss. Enter your secret password.
+                </p>
+                <input
+                  type="password"
+                  value={bossPassword}
+                  onChange={(e) => setBossPassword(e.target.value)}
+                  autoComplete="current-password"
+                  autoFocus
+                  required
+                  placeholder="Secret password"
+                  className="w-full text-sm px-4 py-3 rounded-2xl border border-romantic-pastel focus:ring-2 focus:ring-romantic-rose/40 bg-romantic-softBg"
+                />
+                {accessError && (
+                  <p className="text-xs text-rose-600 text-center">{accessError}</p>
+                )}
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded-full bg-romantic-rose text-white text-sm font-semibold hover:bg-romantic-deepRose"
+                >
+                  Unlock Boss Mode ✨
+                </button>
+                <button
+                  type="button"
+                  onClick={enterReadOnlyMode}
+                  className="w-full py-2 text-xs text-romantic-brown/60"
+                >
+                  Continue without editing
+                </button>
+              </form>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full mt-5 py-2 text-xs text-romantic-brown/60"
+          >
+            Close settings
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
       <div
@@ -185,9 +307,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-romantic-pastel/60 shrink-0">
           <div className="flex items-center space-x-2">
             <Heart className="w-5 h-5 text-romantic-rose fill-romantic-rose animate-heartbeat" />
-            <h3 className="font-serif text-xl font-bold text-romantic-brown">
-              Gift Settings & Journal
-            </h3>
+            <div>
+              <h3 className="font-serif text-xl font-bold text-romantic-brown">
+                Gift Settings & Journal
+              </h3>
+              <p className="text-[10px] text-romantic-brown/60">
+                {accessMode === 'admin' ? 'Boss Mode unlocked' : 'Read-only settings'}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -265,25 +392,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <label className="block text-xs font-semibold text-romantic-brown mb-1">
                     His Name (Recipient)
                   </label>
-                  <input
-                    type="text"
-                    value={recipientName}
-                    onChange={(e) => setRecipientName(e.target.value)}
-                    required
-                    className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel focus:ring-2 focus:ring-romantic-rose/40 bg-romantic-softBg"
-                  />
+                  {accessMode === 'admin' ? (
+                    <input
+                      type="text"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      required
+                      className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel focus:ring-2 focus:ring-romantic-rose/40 bg-romantic-softBg"
+                    />
+                  ) : (
+                    <p className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel bg-romantic-softBg text-romantic-brown">
+                      Cherry
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-romantic-brown mb-1">
                     Your Name (Sender)
                   </label>
-                  <input
-                    type="text"
-                    value={senderName}
-                    onChange={(e) => setSenderName(e.target.value)}
-                    required
-                    className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel focus:ring-2 focus:ring-romantic-rose/40 bg-romantic-softBg"
-                  />
+                  {accessMode === 'admin' ? (
+                    <input
+                      type="text"
+                      value={senderName}
+                      onChange={(e) => setSenderName(e.target.value)}
+                      required
+                      className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel focus:ring-2 focus:ring-romantic-rose/40 bg-romantic-softBg"
+                    />
+                  ) : (
+                    <p className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel bg-romantic-softBg text-romantic-brown">
+                      Yash
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -293,28 +432,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <Calendar className="w-3.5 h-3.5 text-romantic-rose" />
                   <span>Journey Start Date (Day 1)</span>
                 </label>
-                <input
-                  type="date"
-                  value={journeyStartDate}
-                  onChange={(e) => setJourneyStartDate(e.target.value)}
-                  required
-                  className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel focus:ring-2 focus:ring-romantic-rose/40 bg-romantic-softBg"
-                />
+                {accessMode === 'admin' ? (
+                  <input
+                    type="date"
+                    value={journeyStartDate}
+                    onChange={(e) => setJourneyStartDate(e.target.value)}
+                    required
+                    className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel focus:ring-2 focus:ring-romantic-rose/40 bg-romantic-softBg"
+                  />
+                ) : (
+                  <p className="w-full text-xs px-3 py-2 rounded-2xl border border-romantic-pastel bg-romantic-softBg text-romantic-brown">
+                    29 November 2026
+                  </p>
+                )}
                 <p className="text-[10px] text-romantic-brown/60 mt-1">
-                  Days are calculated from this date. Change to test different progress states!
+                  {accessMode === 'admin'
+                    ? 'Only Boss Mode can change the Day 1 date.'
+                    : 'Day 1 is fixed to 29 November 2026.'}
                 </p>
               </div>
 
               
 
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="submit"
-                  className="px-6 py-2 rounded-full bg-romantic-rose text-white text-xs font-semibold hover:bg-romantic-deepRose shadow-sm"
-                >
-                  Save Settings ✨
-                </button>
-              </div>
+              {accessMode === 'admin' && (
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-full bg-romantic-rose text-white text-xs font-semibold hover:bg-romantic-deepRose shadow-sm"
+                  >
+                    Save Settings ✨
+                  </button>
+                </div>
+              )}
             </form>
           )}
 
@@ -566,15 +715,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
         </div>
 
-        {/* Reason Editor Modal */}
-        {isEditorOpen && (
-          <ReasonEditorModal
-            reasons={reasons}
-            onUpdateReason={onUpdateReason}
-            onResetAllReasons={onResetAllReasons}
-            onClose={() => setIsEditorOpen(false)}
-          />
-        )}
       </div>
     </div>
   );
