@@ -1,5 +1,5 @@
 // 365 Reasons - Service Worker
-const CACHE_NAME = 'reasons-365-v1';
+const CACHE_NAME = 'reasons-365-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -29,7 +29,22 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests and skip chrome-extension or other schemes
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
+  if (new URL(event.request.url).pathname.startsWith('/api/')) return;
 
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
