@@ -233,7 +233,7 @@ export async function getSettings(): Promise<AppSettings> {
   const db = await getDB();
   const settings = await db.get('settings', 'config');
   if (!settings) return DEFAULT_SETTINGS;
-  return { ...DEFAULT_SETTINGS, ...settings };
+    return { ...DEFAULT_SETTINGS, ...settings, previewMode: false, previewDayOverride: null };
 }
 
 export async function saveSettings(settings: Partial<AppSettings>): Promise<AppSettings> {
