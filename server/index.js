@@ -3,6 +3,7 @@ import cors from 'cors';
 import webPush from 'web-push';
 import cron from 'node-cron';
 import fs from 'fs';
+import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -13,7 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Paths for persistence
 const VAPID_FILE = path.join(__dirname, 'vapid.json');
@@ -245,6 +246,123 @@ cron.schedule('* * * * *', async () => {
   if (modified) {
     const active = subs.filter((s) => !s.toRemove);
     saveSubscriptions(active);
+  }
+});
+
+// ---------------------------------------------------------------
+// SHARED MEMORIES (stored in Supabase so every device sees them)
+// Needs these environment variables on Render:
+//   SUPABASE_URL, SUPABASE_SERVICE_KEY, MEMORIES_PASSWORD
+// ---------------------------------------------------------------
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+const MEMORIES_PASSWORD = process.env.MEMORIES_PASSWORD || '';
+
+function memoriesConfigured() {
+  return Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY && MEMORIES_PASSWORD);
+}
+
+function supabase(pathAndQuery, options = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_SERVICE_KEY,
+      // Old-style keys are JWTs (start with "eyJ") and go in Authorization too;
+      // new-style "sb_secret_..." keys must only be sent as apikey.
+      ...(SUPABASE_SERVICE_KEY.startsWith('eyJ') ? { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } : {}),
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+}
+
+function passwordOk(req) {
+  const given = Buffer.from(String(req.get('x-memories-password') || ''));
+  const wanted = Buffer.from(MEMORIES_PASSWORD);
+  return given.length === wanted.length && crypto.timingSafeEqual(given, wanted);
+}
+
+function requireMemoriesAccess(req, res, next) {
+  if (!memoriesConfigured()) {
+    return res.status(503).json({ error: 'Shared memories are not set up on the server yet.' });
+  }
+  if (!passwordOk(req)) {
+    return res.status(401).json({ error: 'Wrong password.' });
+  }
+  next();
+}
+
+app.get('/api/memories', async (req, res) => {
+  if (!memoriesConfigured()) {
+    return res.status(503).json({ error: 'Shared memories are not set up on the server yet.' });
+  }
+  try {
+    const r = await supabase('memories?select=*&order=created_at.desc');
+    if (!r.ok) throw new Error(`Supabase responded ${r.status}`);
+    const rows = await r.json();
+    res.json({
+      memories: rows.map((m) => ({
+        id: m.id,
+        title: m.title,
+        date: m.date,
+        caption: m.caption,
+        imageDataUrl: m.image_data_url,
+        tag: m.tag || undefined,
+        createdAt: Number(m.created_at),
+      })),
+    });
+  } catch (err) {
+    console.error('Failed to load memories:', err.message);
+    res.status(502).json({ error: 'Could not load memories.' });
+  }
+});
+
+app.post('/api/memories', requireMemoriesAccess, async (req, res) => {
+  const m = req.body || {};
+  const valid =
+    typeof m.id === 'string' && m.id.length > 0 && m.id.length <= 100 &&
+    !m.id.startsWith('default-') &&
+    typeof m.title === 'string' && m.title.trim() && m.title.length <= 200 &&
+    typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) &&
+    typeof m.caption === 'string' && m.caption.length <= 5000 &&
+    typeof m.imageDataUrl === 'string' && m.imageDataUrl.startsWith('data:image/') &&
+    m.imageDataUrl.length <= 6_000_000 &&
+    Number.isFinite(m.createdAt);
+  if (!valid) return res.status(400).json({ error: 'Invalid memory.' });
+
+  try {
+    const r = await supabase('memories?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        id: m.id,
+        title: m.title.trim(),
+        date: m.date,
+        caption: m.caption,
+        image_data_url: m.imageDataUrl,
+        tag: typeof m.tag === 'string' && m.tag.trim() ? m.tag.trim().slice(0, 100) : null,
+        created_at: Math.round(m.createdAt),
+      }),
+    });
+    if (!r.ok) throw new Error(`Supabase responded ${r.status}`);
+    res.status(201).json({ success: true });
+  } catch (err) {
+    console.error('Failed to save memory:', err.message);
+    res.status(502).json({ error: 'Could not save the memory.' });
+  }
+});
+
+app.delete('/api/memories/:id', requireMemoriesAccess, async (req, res) => {
+  try {
+    const r = await supabase(`memories?id=eq.${encodeURIComponent(req.params.id)}`, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=minimal' },
+    });
+    if (!r.ok) throw new Error(`Supabase responded ${r.status}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to delete memory:', err.message);
+    res.status(502).json({ error: 'Could not delete the memory.' });
   }
 });
 
