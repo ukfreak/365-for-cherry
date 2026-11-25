@@ -175,6 +175,21 @@ export async function saveMemory(memory: Memory): Promise<void> {
   await db.put('memories', memory);
 }
 
+/**
+ * Makes the local copy match the shared memories from the server.
+ * Memories defined in src/data/defaultMemories.ts (ids "default-...") are kept as they are.
+ */
+export async function replaceSharedMemories(shared: Memory[]): Promise<void> {
+  const db = await getDB();
+  const keep = new Set(shared.map((m) => m.id));
+  for (const local of await db.getAll('memories')) {
+    if (!local.id.startsWith('default-') && !keep.has(local.id)) {
+      await db.delete('memories', local.id);
+    }
+  }
+  for (const m of shared) await db.put('memories', m);
+}
+
 export async function deleteMemory(id: string): Promise<void> {
   const db = await getDB();
   await db.delete('memories', id);
