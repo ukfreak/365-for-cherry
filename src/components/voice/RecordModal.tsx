@@ -118,7 +118,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({ onSave, onClose }) => 
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-   const handleSaveSubmit = async (e: React.FormEvent) => {
+  const handleSaveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
     if (!audioBlob) {
@@ -143,19 +143,6 @@ export const RecordModal: React.FC<RecordModalProps> = ({ onSave, onClose }) => 
     const ok = await onSave(newNote);
     setSaving(false);
     if (ok !== false) onClose();
-  };
-
-    const newNote: VoiceNote = {
-      id: 'voice-' + Date.now(),
-      title: title.trim(),
-      description: description.trim(),
-      audioBlob,
-      duration: recordingDuration || 1,
-      createdAt: Date.now(),
-    };
-
-    onSave(newNote);
-    onClose();
   };
 
   return (
@@ -326,14 +313,14 @@ export const RecordModal: React.FC<RecordModalProps> = ({ onSave, onClose }) => 
             </button>
             <button
               type="submit"
-              disabled={!audioBlob}
+              disabled={!audioBlob || saving}
               className={`px-5 py-2 text-xs font-semibold rounded-full text-white transition-all shadow-sm ${
-                audioBlob
+                audioBlob && !saving
                   ? 'bg-romantic-rose hover:bg-romantic-deepRose cursor-pointer'
                   : 'bg-romantic-brown/30 cursor-not-allowed'
               }`}
             >
-              Save Voice Note ✨
+              {saving ? 'Saving…' : 'Save Voice Note ✨'}
             </button>
           </div>
         </form>
