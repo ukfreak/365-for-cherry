@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { AppSettings, Memory, Reason, VoiceNote } from '../types';
+import { DEFAULT_MEMORIES } from '../data/defaultMemories';
 import { DEFAULT_REASONS, DEFAULT_REASONS_VERSION } from '../data/defaultReasons';
 
 interface AppDB extends DBSchema {
