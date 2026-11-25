@@ -26,7 +26,7 @@ export async function fetchSharedMemories(): Promise<Memory[] | null> {
 
 export type SharedResult = { ok: true } | { ok: false; error: string };
 
-async function send(url: string, method: 'POST' | 'DELETE', body?: unknown): Promise<SharedResult> {
+export async function send(url: string, method: 'POST' | 'DELETE', body?: unknown): Promise<SharedResult> {
   const password = askPassword();
   if (!password) return { ok: false, error: 'Password needed to change memories.' };
   try {
