@@ -5,7 +5,7 @@ import { RecordModal } from './RecordModal';
 
 interface VoiceNotesDiaryProps {
   voiceNotes: VoiceNote[];
-  onSaveVoiceNote: (note: VoiceNote) => void;
+  onSaveVoiceNote: (note: VoiceNote) => Promise<boolean | void> | void;
   onDeleteVoiceNote: (id: string) => void;
   senderName: string;
 }
