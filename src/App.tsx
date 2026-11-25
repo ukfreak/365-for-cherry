@@ -61,7 +61,7 @@ export const App: React.FC = () => {
     async function init() {
       try {
         await seedInitialDemoData();
-                const [sharedMemories, sharedVoiceNotes] = await Promise.all([
+        const [sharedMemories, sharedVoiceNotes] = await Promise.all([
           fetchSharedMemories(),
           fetchSharedVoiceNotes(),
         ]);
@@ -243,13 +243,24 @@ export const App: React.FC = () => {
   };
 
   // Voice Notes Handlers
-  const handleSaveVoiceNote = async (note: VoiceNote) => {
+  const handleSaveVoiceNote = async (note: VoiceNote): Promise<boolean> => {
+    const result = await saveSharedVoiceNote(note);
+    if (!result.ok) {
+      alert(result.error);
+      return false;
+    }
     await saveVoiceNoteToDb(note);
     const refreshed = await getAllVoiceNotes();
     setVoiceNotes(refreshed);
+    return true;
   };
 
   const handleDeleteVoiceNote = async (id: string) => {
+    const result = await deleteSharedVoiceNote(id);
+    if (!result.ok) {
+      alert(result.error);
+      return;
+    }
     await deleteVoiceNoteFromDb(id);
     setVoiceNotes((prev) => prev.filter((v) => v.id !== id));
   };
