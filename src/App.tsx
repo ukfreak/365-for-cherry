@@ -14,6 +14,7 @@ import {
   saveMemory as saveMemoryToDb,
   replaceSharedMemories,
   deleteMemory as deleteMemoryFromDb,
+  replaceSharedVoiceNotes,
   clearAllMemories,
   resetAllAppData,
   saveVoiceNote as saveVoiceNoteToDb,
@@ -31,6 +32,7 @@ import { TodayReasonCard } from './components/home/TodayReasonCard';
 import { ReasonsJournal } from './components/reasons/ReasonsJournal';
 import { MemoriesScrapbook } from './components/memories/MemoriesScrapbook';
 import { fetchSharedMemories, saveSharedMemory, deleteSharedMemory } from './services/memoriesApi';
+import { fetchSharedVoiceNotes, saveSharedVoiceNote, deleteSharedVoiceNote } from './services/voiceNotesApi';
 import { VoiceNotesDiary } from './components/voice/VoiceNotesDiary';
 import { Day365Surprise } from './components/surprise/Day365Surprise';
 import { SettingsModal } from './components/settings/SettingsModal';
@@ -59,8 +61,12 @@ export const App: React.FC = () => {
     async function init() {
       try {
         await seedInitialDemoData();
-        const shared = await fetchSharedMemories();
-        if (shared) await replaceSharedMemories(shared);
+                const [sharedMemories, sharedVoiceNotes] = await Promise.all([
+          fetchSharedMemories(),
+          fetchSharedVoiceNotes(),
+        ]);
+        if (sharedMemories) await replaceSharedMemories(sharedMemories);
+        if (sharedVoiceNotes) await replaceSharedVoiceNotes(sharedVoiceNotes);
         const [loadedSettings, loadedReasons, loadedMemories, loadedVoiceNotes] =
           await Promise.all([
             getSettings(),
