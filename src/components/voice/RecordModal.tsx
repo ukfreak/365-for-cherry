@@ -3,7 +3,7 @@ import { X, Mic, Square, Play, Pause, RotateCcw, Check, AlertCircle } from 'luci
 import { VoiceNote } from '../../types';
 
 interface RecordModalProps {
-  onSave: (voiceNote: VoiceNote) => void;
+  onSave: (voiceNote: VoiceNote) => Promise<boolean | void> | void;
   onClose: () => void;
 }
 
@@ -18,6 +18,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({ onSave, onClose }) => 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -117,8 +118,9 @@ export const RecordModal: React.FC<RecordModalProps> = ({ onSave, onClose }) => 
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const handleSaveSubmit = (e: React.FormEvent) => {
+   const handleSaveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!audioBlob) {
       setError('Please record a voice note before saving.');
       return;
@@ -127,6 +129,21 @@ export const RecordModal: React.FC<RecordModalProps> = ({ onSave, onClose }) => 
       setError('Please enter a title for your voice message.');
       return;
     }
+
+    const newNote: VoiceNote = {
+      id: 'voice-' + Date.now(),
+      title: title.trim(),
+      description: description.trim(),
+      audioBlob,
+      duration: recordingDuration || 1,
+      createdAt: Date.now(),
+    };
+
+    setSaving(true);
+    const ok = await onSave(newNote);
+    setSaving(false);
+    if (ok !== false) onClose();
+  };
 
     const newNote: VoiceNote = {
       id: 'voice-' + Date.now(),
