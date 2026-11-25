@@ -245,31 +245,15 @@ export async function saveSettings(settings: Partial<AppSettings>): Promise<AppS
   return updated;
 }
 
-// ----------------- SAMPLE INITIAL MEMORIES -----------------
 export async function seedInitialDemoData(): Promise<void> {
-  const memories = await getAllMemories();
-  if (memories.length === 0) {
-    // Add warm sample memories so the scrapbook looks charming immediately
-    const sample1: Memory = {
-      id: 'sample-1',
-      title: 'Our First Sunset Coffee',
-      date: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().split('T')[0],
-      caption: 'The day we sat talking until the barista had to turn the sign to closed. I still smile every time I pass that corner café.',
-      imageDataUrl: createHeartPlaceholderImage('Sunset Coffee', '#F3C6D5', '#C77D98'),
-      tag: 'Café Date',
-      createdAt: Date.now() - 30 * 24 * 3600 * 1000,
-    };
-    const sample2: Memory = {
-      id: 'sample-2',
-      title: 'The Rainy Day Escape',
-      date: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString().split('T')[0],
-      caption: 'We were soaked from head to toe, sharing a tiny pastry under the bakery awning, laughing so hard my ribs ached.',
-      imageDataUrl: createHeartPlaceholderImage('Rainy Day Joy', '#F8DDE6', '#59434A'),
-      tag: 'Spontaneous',
-      createdAt: Date.now() - 15 * 24 * 3600 * 1000,
-    };
-    await saveMemory(sample1);
-    await saveMemory(sample2);
+  const db = await getDB();
+  // Remove the old placeholder memories from earlier versions of the app
+  await db.delete('memories', 'sample-1');
+  await db.delete('memories', 'sample-2');
+  // Memories in src/data/defaultMemories.ts always match that file.
+  // Memories added inside the app (other ids) are left untouched.
+  for (const memory of DEFAULT_MEMORIES) {
+    await db.put('memories', memory);
   }
 }
 
