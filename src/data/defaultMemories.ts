@@ -1,4 +1,4 @@
-import { Memory } from '../types';
+eimport { Memory } from '../types';
 
 /**
  * YOUR MEMORIES — edit this file (and add photos to public/memories/).
@@ -19,14 +19,5 @@ export const DEFAULT_MEMORIES: Memory[] = [
     imageDataUrl: '/memories/1.jpg',
     tag: 'Special Moment',
     createdAt: 1,
-  },
-  {
-    id: 'default-2',
-    title: 'Write your second memory title',
-    date: '2026-02-01',
-    caption: 'Another little story.',
-    imageDataUrl: '/memories/2.jpg',
-    tag: 'Special Moment',
-    createdAt: 2,
-  },
+  }
 ];
