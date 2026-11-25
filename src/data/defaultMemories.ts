@@ -1,4 +1,4 @@
-eimport { Memory } from '../types';
+import { Memory } from '../types';
 
 /**
  * YOUR MEMORIES — edit this file (and add photos to public/memories/).
