@@ -238,6 +238,32 @@ export async function saveVoiceNote(note: VoiceNote): Promise<void> {
     createdAt: note.createdAt,
   });
 }
+const SYNCED_VOICE_IDS_KEY = 'syncedVoiceNoteIds';
+
+/**
+ * Makes the local voice notes match the shared ones from the server.
+ * Notes that were never synced (recorded only on this device) are kept.
+ * Only notes that were on the server before and are gone now get removed.
+ */
+export async function replaceSharedVoiceNotes(shared: VoiceNote[]): Promise<void> {
+  const db = await getDB();
+  const onServer = new Set(shared.map((n) => n.id));
+  const previouslySynced: string[] = (await db.get('settings', SYNCED_VOICE_IDS_KEY)) || [];
+  for (const id of previouslySynced) {
+    if (!onServer.has(id)) await db.delete('voiceNotes', id);
+  }
+  for (const n of shared) {
+    await db.put('voiceNotes', {
+      id: n.id,
+      title: n.title,
+      description: n.description,
+      audioBlob: n.audioBlob,
+      duration: n.duration,
+      createdAt: n.createdAt,
+    });
+  }
+  await db.put('settings', Array.from(onServer), SYNCED_VOICE_IDS_KEY);
+}
 
 export async function deleteVoiceNote(id: string): Promise<void> {
   const db = await getDB();
