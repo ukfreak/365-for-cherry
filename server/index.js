@@ -365,6 +365,84 @@ app.delete('/api/memories/:id', requireMemoriesAccess, async (req, res) => {
     res.status(502).json({ error: 'Could not delete the memory.' });
   }
 });
+// ---------------------------------------------------------------
+// SHARED VOICE NOTES (same Supabase + password as memories)
+// ---------------------------------------------------------------
+async function voiceFail(r) {
+  const body = await r.text().catch(() => '');
+  return new Error(`Supabase responded ${r.status} ${body.slice(0, 300)}`);
+}
+
+app.get('/api/voice-notes', async (req, res) => {
+  if (!memoriesConfigured()) {
+    return res.status(503).json({ error: 'Shared memories are not set up on the server yet.' });
+  }
+  try {
+    const r = await supabase('voice_notes?select=*&order=created_at.desc');
+    if (!r.ok) throw await voiceFail(r);
+    const rows = await r.json();
+    res.json({
+      voiceNotes: rows.map((n) => ({
+        id: n.id,
+        title: n.title,
+        description: n.description,
+        audioDataUrl: n.audio_data_url,
+        duration: Number(n.duration_seconds),
+        createdAt: Number(n.created_at),
+      })),
+    });
+  } catch (err) {
+    console.error('Failed to load voice notes:', err.message);
+    res.status(502).json({ error: 'Could not load voice notes.' });
+  }
+});
+
+app.post('/api/voice-notes', requireMemoriesAccess, async (req, res) => {
+  const n = req.body || {};
+  const valid =
+    typeof n.id === 'string' && n.id.length > 0 && n.id.length <= 100 &&
+    typeof n.title === 'string' && n.title.trim() && n.title.length <= 200 &&
+    typeof n.description === 'string' && n.description.length <= 5000 &&
+    typeof n.audioDataUrl === 'string' && n.audioDataUrl.startsWith('data:audio/') &&
+    n.audioDataUrl.length <= 7_000_000 &&
+    Number.isFinite(n.duration) && n.duration >= 0 &&
+    Number.isFinite(n.createdAt);
+  if (!valid) return res.status(400).json({ error: 'Invalid voice note.' });
+
+  try {
+    const r = await supabase('voice_notes?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        id: n.id,
+        title: n.title.trim(),
+        description: n.description,
+        audio_data_url: n.audioDataUrl,
+        duration_seconds: n.duration,
+        created_at: Math.round(n.createdAt),
+      }),
+    });
+    if (!r.ok) throw await voiceFail(r);
+    res.status(201).json({ success: true });
+  } catch (err) {
+    console.error('Failed to save voice note:', err.message);
+    res.status(502).json({ error: 'Could not save the voice note.' });
+  }
+});
+
+app.delete('/api/voice-notes/:id', requireMemoriesAccess, async (req, res) => {
+  try {
+    const r = await supabase(`voice_notes?id=eq.${encodeURIComponent(req.params.id)}`, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=minimal' },
+    });
+    if (!r.ok) throw await voiceFail(r);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to delete voice note:', err.message);
+    res.status(502).json({ error: 'Could not delete the voice note.' });
+  }
+});
 
 // Serve static frontend in production if dist directory exists
 const distPath = path.join(__dirname, '../dist');
