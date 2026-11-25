@@ -12,6 +12,7 @@ import {
   toggleFavoriteReason,
   resetAllReasons,
   saveMemory as saveMemoryToDb,
+  replaceSharedMemories,
   deleteMemory as deleteMemoryFromDb,
   clearAllMemories,
   resetAllAppData,
@@ -29,6 +30,7 @@ import { JourneyProgress } from './components/home/JourneyProgress';
 import { TodayReasonCard } from './components/home/TodayReasonCard';
 import { ReasonsJournal } from './components/reasons/ReasonsJournal';
 import { MemoriesScrapbook } from './components/memories/MemoriesScrapbook';
+import { fetchSharedMemories, saveSharedMemory, deleteSharedMemory } from './services/memoriesApi';
 import { VoiceNotesDiary } from './components/voice/VoiceNotesDiary';
 import { Day365Surprise } from './components/surprise/Day365Surprise';
 import { SettingsModal } from './components/settings/SettingsModal';
@@ -57,6 +59,8 @@ export const App: React.FC = () => {
     async function init() {
       try {
         await seedInitialDemoData();
+        const shared = await fetchSharedMemories();
+        if (shared) await replaceSharedMemories(shared);
         const [loadedSettings, loadedReasons, loadedMemories, loadedVoiceNotes] =
           await Promise.all([
             getSettings(),
@@ -199,6 +203,15 @@ export const App: React.FC = () => {
 
   // Memories Handlers
   const handleSaveMemory = async (memory: Memory) => {
+    if (memory.id.startsWith('default-')) {
+      alert('This memory is part of the app itself. Change it in src/data/defaultMemories.ts instead.');
+      return;
+    }
+    const result = await saveSharedMemory(memory);
+    if (!result.ok) {
+      alert(result.error);
+      return;
+    }
     await saveMemoryToDb(memory);
     setMemories((prev) => {
       const exists = prev.some((m) => m.id === memory.id);
@@ -210,6 +223,15 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteMemory = async (id: string) => {
+    if (id.startsWith('default-')) {
+      alert('This memory is part of the app itself. Remove it from src/data/defaultMemories.ts instead.');
+      return;
+    }
+    const result = await deleteSharedMemory(id);
+    if (!result.ok) {
+      alert(result.error);
+      return;
+    }
     await deleteMemoryFromDb(id);
     setMemories((prev) => prev.filter((m) => m.id !== id));
   };
