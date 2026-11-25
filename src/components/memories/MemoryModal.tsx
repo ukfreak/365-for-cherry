@@ -37,12 +37,28 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({
       return;
     }
 
+    // Shrink the photo (max 1200px, JPEG) so it saves and loads quickly everywhere
     const reader = new FileReader();
     reader.onload = (event) => {
-      if (event.target?.result) {
-        setImageDataUrl(event.target.result as string);
+      const original = event.target?.result as string | undefined;
+      if (!original) return;
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setImageDataUrl(original);
+        } else {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          setImageDataUrl(canvas.toDataURL('image/jpeg', 0.8));
+        }
         setError('');
-      }
+      };
+      img.onerror = () => setError('Could not read this image. Try another photo.');
+      img.src = original;
     };
     reader.readAsDataURL(file);
   };
